@@ -1,0 +1,89 @@
+# """
+# core/database.py
+#
+# Implement HashMap-style in-memory DB (plain dicts) and helpers used by routes.
+# """
+from typing import Optional
+from datetime import datetime
+from dataclasses import asdict
+from core.models import User, Appointment
+import bcrypt
+
+# Global HashMap (in-memory)
+db = {
+	"users": {},         # user_id -> {id,name,email,password,role}
+	"appointments": {}   # appt_id -> {id,tutor_id,student_id,time}
+}
+
+
+def init_db():
+	"""Initialize sample data (called on import for convenience)."""
+	def _hash(pw: str) -> str:
+		return bcrypt.hashpw(pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+	u1 = User(id="u1", name="Đỗ Hồng Phúc", email="tutor@hcmut.edu.vn", password=_hash("123"), role="TUTOR")
+	u2 = User(id="u2", name="Duy Khang", email="student@hcmut.edu.vn", password=_hash("123"), role="STUDENT")
+	u3 = User(id="u3", name="Tín", email="admin@hcmut.edu.vn", password=_hash("admin"), role="ADMIN")
+
+	db["users"] = {
+		u1.id: asdict(u1),
+		u2.id: asdict(u2),
+		u3.id: asdict(u3),
+	}
+
+	a1 = Appointment(id="a1", tutor_id="u1", student_id=None, time="2025-11-26 09:00")
+	db["appointments"] = {a1.id: asdict(a1)}
+
+
+def _next_user_id() -> str:
+	idx = 1
+	while True:
+		uid = f"u{idx}"
+		if uid not in db["users"]:
+			return uid
+		idx += 1
+
+
+def create_user(name: str, email: str, password: str, role: str = "PENDING") -> dict:
+	"""Create a new user (returns the created user dict). Raises ValueError if email exists."""
+	if get_user_by_email(email) is not None:
+		raise ValueError("Email already exists")
+	uid = _next_user_id()
+	# hash password before storing
+	hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+	user_obj = User(id=uid, name=name, email=email, password=hashed, role=role)
+	user = asdict(user_obj)
+	db["users"][uid] = user
+	return user
+
+
+def get_user_by_email(email: str) -> Optional[dict]:
+	for user in db["users"].values():
+		if user.get("email") == email:
+			return user
+	return None
+
+
+def authenticate(email: str, password: str) -> Optional[str]:
+	"""Return user_id if credentials match, else None."""
+	u = get_user_by_email(email)
+	if not u:
+		return None
+	stored = u.get("password")
+	try:
+		if stored and bcrypt.checkpw(password.encode('utf-8'), stored.encode('utf-8')):
+			return u.get("id")
+	except ValueError:
+		return None
+	return None
+
+
+def set_user_role(user_id: str, role: str) -> bool:
+	if user_id not in db["users"]:
+		return False
+	db["users"][user_id]["role"] = role
+	return True
+
+
+# NOTE: do not auto-initialize here to avoid double-init with reloader.
+# Call `init_db()` from application factory (`create_app`) when starting the server.

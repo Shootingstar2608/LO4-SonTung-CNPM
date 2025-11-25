@@ -34,3 +34,17 @@ class Appointment:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+@dataclass
+class Document:
+    id: str
+    title: str
+    description: str
+    uploader_id: str
+    link: str
+    course_code: str
+    created_at: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)

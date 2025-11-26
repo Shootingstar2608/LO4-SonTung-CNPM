@@ -64,6 +64,10 @@ class MockDataCoreClient:
         }
     }
 
+    def fetch_all_user_ids(self) -> List[str]:
+        print("[MockDataCore] Đang quét User ID trong hệ thống trường...")
+        return list(self.DATACORE_DB.keys())
+    
     def fetch_user_profiles(self, user_ids: List[str]):
         print(f"[MockDataCore] Đang trích xuất hồ sơ chi tiết cho: {user_ids}")
         results = []
@@ -150,24 +154,21 @@ class DataSyncService:
         self._sync_history = {} 
 
     def run_scheduled_personal_data_sync(self) -> SyncReport:
-        report = SyncReport(
-            timestamp=datetime.now(),
-            status=SyncStatusEnum.SUCCESS,
-            message="Đồng bộ lịch trình (Scheduled) bắt đầu"
-        )
+        report = SyncReport(datetime.now(), SyncStatusEnum.SUCCESS, "Auto Sync Started")
         try:
-            users = self.userRepo.get_all_users()
-            user_ids = [u.get('id') for u in users]
-            self._core_pull_and_process_user_data(user_ids)
-            report.message = "Đồng bộ hoàn tất"
-            report.records_processed = len(user_ids)
+            # 1. Hỏi DataCore danh sách toàn bộ ID
+            all_ids = self.datacore_client.fetch_all_user_ids()
+            print(f"[Sync] Tìm thấy {len(all_ids)} user trên hệ thống trường.")
+            
+            # 2. Đồng bộ toàn bộ danh sách này (Tự tạo mới nếu chưa có)
+            self._core_pull_and_process_user_data(all_ids)
+            
+            report.message = f"Đã đồng bộ toàn bộ {len(all_ids)} người dùng."
+            report.records_processed = len(all_ids)
             self._update_sync_status(SyncTypeEnum.PERSONAL, report)
         except Exception as e:
-            report.status = SyncStatusEnum.FAILED
-            report.message = f"Lỗi hệ thống: {str(e)}"
-            report.errors.append(str(e))
+            report.status = SyncStatusEnum.FAILED; report.message = str(e)
             self._update_sync_status(SyncTypeEnum.PERSONAL, report)
-        
         return report
 
     def run_manual_personal_data_sync(self, user_id: str) -> SyncReport:

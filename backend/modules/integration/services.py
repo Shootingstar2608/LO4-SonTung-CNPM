@@ -1,20 +1,19 @@
-#backend/modules/integration/services.py
+# backend/modules/integration/services.py
 import time
 import uuid
 import jwt
 import requests
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 from typing import List, Optional
 from flask import current_app
 
 from core.models import (
     User, Role, Permission, SyncReport, SyncStatusEnum, 
-    SyncStatus, SyncTypeEnum, AuthResult, SsoLogoutUrl, UserProfile, SsoLogoutUrl
+    SyncStatus, SyncTypeEnum, AuthResult, SsoLogoutUrl, UserProfile
 )
 from core.database import db
 
-#Mock clients
-
+# Mock clients
 class MockDataCoreClient:
     def fetch_user_profiles(self, user_ids: List[str]):
         print(f"[MockDataCore] Đang lấy thông tin profile cho: {user_ids}")
@@ -22,7 +21,7 @@ class MockDataCoreClient:
         for uid in user_ids:
             results.append({
                 "id": uid, 
-                "name": f"User {uid} (Synced)", 
+                "name": f"User {uid} (Đã Sync)", 
                 "email": f"{uid}@hcmut.edu.vn"
             })
         return results
@@ -34,19 +33,39 @@ class MockDataCoreClient:
             {"id": "R_TUTOR", "name": "TUTOR", "perms": ["CREATE_SCHEDULE", "UPLOAD_DOC"]},
             {"id": "R_STUDENT", "name": "STUDENT", "perms": ["BOOK_APT", "VIEW_DOC"]}
         ]
+
 class HttpSSOClient:
     SSO_URL = "http://localhost:5001"
 
     def exchange_code_for_token(self, code: str):
         try:
-            response = requests.post(f"{self.SSO_URL}/token", json={"code": code})
+            print(f"[SSO Client] 🔄 Đang đổi code lấy token: {code}")
+            
+            response = requests.post(
+                f"{self.SSO_URL}/token", 
+                json={"code": code},
+                timeout=10
+            )
+            
+            print(f"[SSO Client] Trạng thái trả về: {response.status_code}")
+            
             if response.status_code == 200:
-                return response.json() # return {sso_id, email, name, role}
-            raise Exception(f"SSO Error: {response.text}")
+                user_info = response.json()
+                print(f"[SSO Client] Thành công! User: {user_info.get('name')}")
+                return user_info
+            
+            error_text = response.text
+            print(f"[SSO Client] Lỗi từ server: {error_text}")
+            raise Exception(f"Lỗi SSO: {error_text}")
+            
         except requests.exceptions.ConnectionError:
-            raise Exception("Không kết nối được với SSO Server (Port 5001)")
+            raise Exception("Không kết nối được với SSO Server")
+        except requests.exceptions.Timeout:
+            raise Exception("SSO Server không phản hồi (Timeout)")
+        except Exception as e:
+            raise
 
-# Exception
+# Exceptions
 class UserDataProcessingError(Exception): pass
 class RoleProcessingError(Exception): pass
 
@@ -60,6 +79,7 @@ class UserRepository:
         if uid in db['users']:
             db['users'][uid]['name'] = user_data['name']
             db['users'][uid]['email'] = user_data['email']
+            print(f"[UserRepo] Đã cập nhật thông tin user: {uid}")
         else:
             from core.database import create_user
             try:
@@ -69,13 +89,16 @@ class UserRepository:
                     password="default_password",
                     role="PENDING"
                 )
-            except ValueError:
+                print(f"[UserRepo] ✨ Đã tạo người dùng mới: {uid}")
+            except ValueError as e:
+                print(f"[UserRepo] Người dùng đã tồn tại: {uid}")
                 pass
 
 class RoleRepository:
     def update_or_create(self, role_data: dict):
-        print(f"[DB] Đã cập nhật Role: {role_data['name']} với quyền {role_data['perms']}")
+        print(f"[RoleRepo] Đã cập nhật Role: {role_data['name']} với quyền {role_data['perms']}")
 
+# Services
 class DataSyncService:
     def __init__(self):
         self.datacore_client = MockDataCoreClient()
@@ -189,13 +212,15 @@ class AuthService:
         self.userRepo = UserRepository()
 
     def get_sso_login_redirect_url(self) -> str:
+        """Tạo URL để redirect đến SSO"""
         base = self.sso_config["sso_login_url"]
-        # Để test backend, redirect về URL này (hoặc URL của Postman nếu test tay)
-        redirect_uri = "http://localhost:5000/auth/sso/callback" 
+        redirect_uri = "http://localhost:5000/auth/sso/callback"
         return f"{base}?redirect_uri={redirect_uri}"
 
     def handle_sso_callback(self, authorization_code: str) -> AuthResult:
         try:
+            print(f"[AuthService] Đang xử lý callback với code: {authorization_code}")
+            
             sso_info = self.sso_client.exchange_code_for_token(authorization_code)
             
             user_data = {
@@ -203,9 +228,12 @@ class AuthService:
                 "name": sso_info['name'],
                 "email": sso_info['email']
             }
-            self.userRepo.update_or_create(user_data) 
+            # Cập nhật thông tin user vào database
+            self.userRepo.update_or_create(user_data)
+            print(f"[AuthService] Đã đồng bộ user: {user_data['name']}")
             
-            secret_key = "dev-secret" 
+            # Tạo token
+            secret_key = "dev-secret"
             payload = {
                 'user_id': sso_info['sso_id'],
                 'role': sso_info.get('role', 'STUDENT'),
@@ -214,12 +242,16 @@ class AuthService:
             }
             token = jwt.encode(payload, secret_key, algorithm='HS256')
             
+            print(f"[AuthService] Đã tạo Token cho User ID: {sso_info['sso_id']}")
+            
             return AuthResult(
                 success=True,
                 token=token,
                 user_id=sso_info['sso_id']
             )
+            
         except Exception as e:
+            print(f"[AuthService] Callback thất bại: {str(e)}")
             return AuthResult(success=False, error_message=str(e))
 
     def validate_local_token(self, token: str) -> bool:
@@ -228,11 +260,13 @@ class AuthService:
             jwt.decode(token, secret_key, algorithms=['HS256'])
             return True
         except jwt.ExpiredSignatureError:
+            print(f"[AuthService] Token đã hết hạn")
             return False
         except jwt.InvalidTokenError:
+            print(f"[AuthService] Token không hợp lệ")
             return False
             
-    def log_out(self, token):
+    def log_out(self, token: str):
         return SsoLogoutUrl("http://localhost:5001/logout")
     
     def get_sso_password_reset_url(self):

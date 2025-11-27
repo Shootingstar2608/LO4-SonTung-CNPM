@@ -78,5 +78,4 @@ Ghi chú cho FE:
 
 ----
 
-Muốn mình xuất tài liệu này thành CSV/Google Sheets, Postman collection hoặc OpenAPI không? Mình làm tiếp nếu bạn muốn.
 

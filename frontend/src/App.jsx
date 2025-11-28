@@ -1,35 +1,35 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import MeetingPage from './pages/MeetingPage';
+import OpenSessionPage from './pages/OpenSessionPage';
+import FreeSchedulePage from './pages/FreeSchedulePage';
+import SessionInfoPage from './pages/SessionInfoPage';
+import ResourcePage from './pages/ResourcePage';         // Trang Upload cũ
+import ResourceMenuPage from './pages/ResourceMenuPage';
+import HistoryPage from './pages/HistoryPage';
+import StudentResourcePage from './pages/StudentResourcePage';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<MeetingPage />} />
+        <Route path="/create-session" element={<OpenSessionPage />} />
+        
+        {/* Thêm 2 đường dẫn này */}
+        <Route path="/free-schedule" element={<FreeSchedulePage />} />
+        <Route path="/session-info" element={<SessionInfoPage />} />
+
+        {/* 1. Vào /resources thì ra trang Menu 3 thẻ */}
+        <Route path="/resources" element={<ResourceMenuPage />} /> 
+
+        {/* 2. Vào /resources/upload thì ra trang Form Upload */}
+        <Route path="/resources/upload" element={<ResourcePage />} />
+        <Route path="/resources/history" element={<HistoryPage />} />
+        <Route path="/resources/student" element={<StudentResourcePage />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;

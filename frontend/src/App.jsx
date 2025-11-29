@@ -16,6 +16,15 @@ import StudentResourcePage from './pages/StudentResourcePage';
 import UserManagementPage from './pages/UserManagementPage';
 import UserInfoPage from './pages/UserInfoPage'; // <--- Trang mới nhất
 
+import InformationMenuPage from './pages/InformationMenuPage';
+import InfoPage from './pages/InfoPage';
+import ResourceAllocationPage from './pages/ResourceAllocationPage';
+import ResultReviewPage from './pages/ResultReviewPage';
+
+import FeedbackMenu from './pages/FeedbackMenu';
+import FeedbackPage from './pages/FeedbackPage';
+import DataPage from './pages/DataPage';
+
 function App() {
   return (
     <BrowserRouter>
@@ -41,6 +50,17 @@ function App() {
 
         {/* --- NHÓM 4: THÔNG TIN CÁ NHÂN (USER) --- */}
         <Route path="/user-info" element={<UserInfoPage />} />
+        
+        {/* --- UC002 --- */}
+        <Route path="/info" element={<InformationMenuPage />} />
+        <Route path="/info/info" element={<InfoPage />} />
+        <Route path="/info/resource-allocate" element={<ResourceAllocationPage />} />
+        <Route path="/info/result" element={<ResultReviewPage />} />
+        
+        {/* --- UC002 --- */}
+        <Route path="/feedback" element={<FeedbackMenu />} />
+        <Route path="/feedback/feedback" element={<FeedbackPage />} />
+        <Route path="/feedback/data" element={<DataPage />} />
 
       </Routes>
     </BrowserRouter>

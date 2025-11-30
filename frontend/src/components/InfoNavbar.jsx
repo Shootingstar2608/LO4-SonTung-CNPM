@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
 const tabs = [
-  { id: 'BaoCao', label: 'Báo Cáo Tổng quan' , route: '/info/info'},
-  { id: 'NguonLuc', label: 'Phân bổ nguồn lực', route: '/info/resource-allocate' },
+  { id: 'Baocao', label: 'Báo cáo tổng quan', route: '/info/info' },
   { id: 'Ketqua', label: 'Xem kết quả tham gia', route: '/info/result' },
 ];
 

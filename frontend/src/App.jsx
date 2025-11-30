@@ -53,8 +53,8 @@ function App() {
         
         {/* --- UC002 --- */}
         <Route path="/info" element={<InformationMenuPage />} />
-        <Route path="/info/info" element={<InfoPage />} />
-        <Route path="/info/resource-allocate" element={<ResourceAllocationPage />} />
+        <Route path="/info/info" element={<ResourceAllocationPage />} />
+        {/* <Route path="/info/resource-allocate" element={<ResourceAllocationPage />} /> */}
         <Route path="/info/result" element={<ResultReviewPage />} />
         
         {/* --- UC002 --- */}
